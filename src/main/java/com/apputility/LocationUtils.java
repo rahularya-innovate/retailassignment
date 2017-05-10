@@ -2,6 +2,8 @@ package com.apputility;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -17,7 +19,16 @@ import com.valueobjects.Position;
 
 
 public class LocationUtils {
-	public static Position getAddressInfo(String sAddress) {
+	
+	public static synchronized Position getAddressInfo(String sAddress){
+		
+		try {
+			sAddress = URLEncoder.encode(sAddress, "UTF-8");
+		} catch (UnsupportedEncodingException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
 	    HttpGet httpGet = new HttpGet("http://maps.google.com/maps/api/geocode/json?address=" + sAddress + "&region=it&language=it&sensor=false");
 	    HttpClient client = new DefaultHttpClient();
 	    HttpResponse response;
@@ -48,10 +59,11 @@ public class LocationUtils {
 	    }
 	    
 	    //process json request here
-	    Position position = new Position();
+	    Position position = null;
 	    try {
 	        String sStatus = jsonObject.getString("status");
 	        if (sStatus.equals("OK")) {
+	        	position = new Position(); 
 	            lng = ((JSONArray)jsonObject.get("results")).getJSONObject(0).getJSONObject("geometry").getJSONObject("location").getDouble("lng");
 	            lat = ((JSONArray)jsonObject.get("results")).getJSONObject(0).getJSONObject("geometry").getJSONObject("location").getDouble("lat");
 	            
@@ -66,4 +78,20 @@ public class LocationUtils {
 	    return position;
 	    
 	}
+	
+	public static synchronized float distanceBetweenPositions(Position pv1, Position pv2) {
+	    double earthRadius = 3958.75;
+	    double dLat = Math.toRadians(pv2.getLatitude()-pv1.getLatitude());
+	    double dLng = Math.toRadians(pv2.getLongitude()-pv1.getLongitude());
+	    double a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+	               Math.cos(Math.toRadians(pv1.getLatitude())) * Math.cos(Math.toRadians(pv2.getLatitude())) *
+	               Math.sin(dLng/2) * Math.sin(dLng/2);
+	    double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+	    double dist = earthRadius * c;
+
+	    int meterConversion = 1609;
+
+	    return new Float(dist * meterConversion).floatValue();
+	   }
+	
 }
